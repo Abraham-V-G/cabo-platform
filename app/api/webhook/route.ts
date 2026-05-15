@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
 
 console.log("⚡ Webhook route loaded");
 
@@ -36,9 +37,129 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    /* =========================================
+      SAVE BOOKING
+    ========================================= */
+
+    try {
+
+      const metadata = session.metadata;
+
+      const reservationCode =
+        session.id.slice(-8).toUpperCase();
+
+      const bookingType =
+        metadata?.bookingType === "VACATION"
+          ? "VACATION"
+          : "TOUR";
+
+      /* =========================================
+        FIND RELATED TOUR / VACATION
+      ========================================= */
+
+      let tourId: string | undefined;
+      let vacationId: string | undefined;
+
+      if (bookingType === "TOUR") {
+
+        const tour = await prisma.tour.findFirst({
+          where: {
+            name: metadata?.tour,
+          },
+        });
+
+        tourId = tour?.id;
+      }
+
+      if (bookingType === "VACATION") {
+
+        const vacation =
+          await prisma.vacationPackage.findFirst({
+            where: {
+              name: metadata?.vacation,
+            },
+          });
+
+        vacationId = vacation?.id;
+      }
+
+      /* =========================================
+        CREATE BOOKING
+      ========================================= */
+
+      await prisma.booking.create({
+
+        data: {
+
+          reservationCode,
+
+          type: bookingType,
+
+          status: "PAID",
+
+          customerName:
+            `${metadata?.firstName || ""}
+            ${metadata?.lastName || ""}`,
+
+          customerEmail:
+            session.customer_details?.email || "",
+
+          customerPhone:
+            metadata?.phone || "",
+
+          guests: Number(
+            metadata?.people || 1
+          ),
+
+          amount:
+            (session.amount_total || 0) / 100,
+
+          stripeSessionId: session.id,
+
+          transportation:
+            metadata?.transportation === "true",
+
+          specialRequests:
+            metadata?.specialRequests || "",
+
+          checkIn:
+            metadata?.checkIn
+              ? new Date(metadata.checkIn)
+              : null,
+
+          checkOut:
+            metadata?.checkOut
+              ? new Date(metadata.checkOut)
+              : null,
+
+          date:
+            metadata?.date
+              ? new Date(metadata.date)
+              : null,
+
+          time:
+            metadata?.time || null,
+
+          tourId,
+
+          vacationId,
+        },
+      });
+
+      console.log(
+        "✅ Booking saved to database"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "❌ Failed to save booking:",
+        error
+      );
+    }
     const metadata = session.metadata;
     const customerEmail = session.customer_details?.email;
-
+    
     console.log("💰 Checkout completed for:", customerEmail);
     console.log("📦 Metadata:", metadata);
 

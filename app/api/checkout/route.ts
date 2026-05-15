@@ -7,6 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    
 
     // 🔒 Buscar el tour real en backend
     const tour = tours.find((t) => t.name === body.tourName);
@@ -39,13 +40,16 @@ export async function POST(req: Request) {
       ],
 
       metadata: {
+        bookingType: "TOUR",
         firstName: body.firstName,
         lastName: body.lastName,
         phone: body.phone,
         date: body.date,
         time: body.time,
+        
         people: body.people.toString(),
         tour: tour.name,
+        
       },
 
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,

@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* =========================================
+   USERS
+========================================= */
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+
+  createdAt DateTime @default(now())
+
+  bookings  Booking[]
+}
+
+/* =========================================
+   TOURS
+========================================= */
+
+model Tour {
+  id          String   @id @default(cuid())
+
+  slug        String   @unique
+  name        String
+  description String
+
+  price       Float
+
+  location    String
+  category    String
+
+  image       String
+
+  times       String[]
+
+  featured    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  bookings    Booking[]
+}
+
+/* =========================================
+   VACATION PACKAGES
+========================================= */
+
+model VacationPackage {
+  id          String   @id @default(cuid())
+
+  slug        String   @unique
+
+  name        String
+  description String?
+
+  days        Int
+  price       Float
+
+  resort      String
+  location    String
+  category    String
+
+  image       String
+
+  features    String[]
+
+  featured    Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+
+  bookings    Booking[]
+}
+
+/* =========================================
+   ARTICLES / NEWS
+========================================= */
+
+model Article {
+
+  id          String   @id @default(cuid())
+
+  slug        String   @unique
+
+  title       String
+
+  category    String
+
+  date        String 
+
+  region      String
+
+  description String
+
+  image       String
+
+  content     String
+
+  featured    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+/* =========================================
+   BOOKINGS
+========================================= */
+
+model Booking {
+  id              String   @id @default(cuid())
+
+  reservationCode String   @unique
+
+  type            BookingType
+
+  status          BookingStatus @default(PENDING)
+
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+
+  guests          Int
+
+  amount          Float
+
+  stripeSessionId String?
+
+  transportation  Boolean @default(false)
+
+  specialRequests String?
+
+  checkIn         DateTime?
+  checkOut        DateTime?
+
+  date            DateTime?
+  time            String?
+
+  createdAt       DateTime @default(now())
+
+  /* RELATIONS */
+
+  userId          String?
+  user            User? @relation(fields: [userId], references: [id])
+
+  tourId          String?
+  tour            Tour? @relation(fields: [tourId], references: [id])
+
+  vacationId      String?
+  vacation        VacationPackage? @relation(fields: [vacationId], references: [id])
+}
+
+/* =========================================
+   ENUMS
+========================================= */
+
+enum Role {
+  USER
+  ADMIN
+  STAFF
+  PARTNER
+}
+
+enum BookingType {
+  TOUR
+  VACATION
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
